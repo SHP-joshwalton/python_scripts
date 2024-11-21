@@ -57,14 +57,14 @@ def getUserFromDatabase(user_id):
 
 
 def createGAMUser(user:dict, run=True):   
-    first_name = user.get('first_name')
-    last_name = user.get('last_name')
-    shp_email = user.get("email")
-    personal_email = user.get('personal_email')
-    phone_number = user.get('phone')
+    first_name = user.get('first_name').strip()
+    last_name = user.get('last_name').strip()
+    shp_email = user.get("email").strip()
+    personal_email = user.get('personal_email').strip()
+    phone_number = user.get('phone').strip()
     recovery_phone_number = f"1{phone_number}"
-    region = user.get('chapter_region')
-    chapter = user.get('chapter')
+    region = user.get('chapter_region').strip()
+    chapter = user.get('chapter').strip()
     createGAMUserCommand = f"gam create user \"{shp_email}\" firstname \"{first_name}\" lastname \"{last_name}\" notify \"{personal_email}\" subject \"Here is your new account\" from \"{shp_from_email}\" password random 10 changepasswordatnextlogin"
 
     updateGAMUserCommand = f"gam update user \"{shp_email}\" phone type mobile value \"{phone_number}\" primary recoveryphone \"{recovery_phone_number}\" otheremail home \"{personal_email}\" recoveryemail \"{personal_email}\" organization description \"User\" costcenter \"{region}\" department \"{chapter}\" title \"\" primary"
