@@ -51,8 +51,10 @@ def copyFile(filename, dest):
         child.expect(r"\$")
         
         # Run rclone command to copy the file
-        child.sendline(f"rclone delete gamautomation:/User_Submit_Photos/{filename}")
-        child.expect(r"\$")
+        # since Drew said that we should not remove the photo from Google Drive,  the following lines are commented out 
+        # if you decide to remove the photo from Google Drive also along with removing it from automation
+        # child.sendline(f"rclone delete gamautomation:/User_Submit_Photos/{filename}")
+        # child.expect(r"\$")
         # Exit the `su` session
         child.sendline("exit")
         child.expect(pexpect.EOF)
