@@ -25,6 +25,8 @@ load_dotenv(dotenv_path)
 email_user = os.getenv('AUTOMATION_INBOX_EMAIL')
 email_password = os.getenv('AUTOMATION_INBOX_EMAIL_PASSWORD')
 
+wp_chapters_json = read_json_from_file("/var/www/html/chapters.json")#fetch_json_from_url("https://shpbeds2.wpengine.com/wp-json/shp/v1/chapters")
+
 def create_connection():
 
     try:
@@ -148,9 +150,9 @@ def get_dictionary_representation(info_list, jiraTicket):
 	last_name = search_and_get_string_after(info_list, "Account Last Name|").strip()
 	shp_email = f"{first_name}.{last_name}@shpbeds.org"
 	chapter_name = search_and_get_string_after(info_list, "SHP Chapter|").strip()
-	chapter = find_chapter_by_title(wp_chapters_json, chapter_name).strip()
-	chapter_id = chapter.get("id").strip()
-	region = chapter.get("region").strip()
+	chapter = find_chapter_by_title(wp_chapters_json, chapter_name)
+	chapter_id = chapter.get("id")
+	region = chapter.get("region")
 	return {
 		"first_name": first_name,
 		"last_name": last_name,
@@ -267,6 +269,5 @@ def connectToMailbox():
 	}
 	print(json.dumps(stats), end="")
 
-
-wp_chapters_json = read_json_from_file("/var/www/html/chapters.json")#fetch_json_from_url("https://shpbeds2.wpengine.com/wp-json/shp/v1/chapters")
-connectToMailbox()
+if __name__ == '__main__':
+	connectToMailbox()
