@@ -1,18 +1,12 @@
 # db_connection.py
 import os
-from dotenv import load_dotenv
+import SHP_config
 import mysql.connector
 from mysql.connector import Error
 
 def create_connection():
 
     try:
-        # Specify the path to the .env file
-        dotenv_path = os.path.join('/var/www/scripts', '.env')
-        # Load the .env file
-        load_dotenv(dotenv_path)
-        # Access the environment variables
-
         connection = mysql.connector.connect(
             host='localhost',
             database=os.getenv('DATABASE_NAME'),

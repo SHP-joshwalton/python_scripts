@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import get_users_from_email
+import get_tickets_from_email
 
 # Specify the path to the .env file
 dotenv_path = os.path.join('/var/www/scripts', '.env')

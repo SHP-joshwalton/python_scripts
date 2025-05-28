@@ -1,24 +1,20 @@
 #!/usr/bin/env python3
 import os
 import sys
-import pexpect
+import pexpect # type: ignore
 from dotenv import load_dotenv
 import mysql.connector
 from mysql.connector import Error
 import argparse
 import json
 import logging
+import SHP_config
 # Create the parser
 parser = argparse.ArgumentParser(description="An example script.")
 parser.add_argument('user_id_arg', type=str, help='A positional argument')
 
 # Parse the arguments
 args = parser.parse_args()
-# Specify the path to the .env file
-dotenv_path = os.path.join('/var/www/scripts', '.env')
-
-# Load the .env file
-load_dotenv(dotenv_path)
 # Configure logging
 logging.basicConfig(
     filename='/var/www/scripts/create_user_results.log',
@@ -27,10 +23,10 @@ logging.basicConfig(
     level=logging.DEBUG
 )
 # Access the environment variables
-gam_user = os.getenv('GAM_USER')
-gam_user_pass = os.getenv('GAM_PASSWORD')
+SERVER_ENVIRONMENT = os.getenv('SERVER_ENVIRONMENT')
+GAM_USER = os.getenv('GAM_USER')
+GAM_PASSWORD = os.getenv('GAM_PASSWORD')
 shp_from_email = os.getenv('EMAIL_SENDER')
-sqlite_path = os.getenv('AUTOMATION_USERS_DB')
 def getUserFromDatabase(user_id):
 
     conn = mysql.connector.connect(
@@ -53,10 +49,18 @@ def getUserFromDatabase(user_id):
         return row_dict
     else:
         return None
+def email_alread_exist(email):
+    gam_command = f"gam info user {email}"
+    output = run_GAM_Command(gam_command)
 
-
-
-def createGAMUser(user:dict, run=True):   
+    # Check if output contains valid user details
+    if "User:" in output and "Primary Email:" in output:
+        return True
+    return False
+def createGAMUser(user:dict, run=True):
+    
+    result = ""
+    error = ""
     first_name = user.get('first_name').strip()
     last_name = user.get('last_name').strip()
     shp_email = user.get("email").strip()
@@ -65,6 +69,9 @@ def createGAMUser(user:dict, run=True):
     recovery_phone_number = f"1{phone_number}"
     region = user.get('chapter_region')
     chapter = user.get('chapter')
+    #check if user already exists
+    if email_alread_exist(shp_email):
+        finalOutput(status='error', errors=['User already exists'])
     createGAMUserCommand = f"gam create user \"{shp_email}\" firstname \"{first_name}\" lastname \"{last_name}\" notify \"{personal_email}\" subject \"Here is your new account\" from \"{shp_from_email}\" password random 10 changepasswordatnextlogin"
 
     updateGAMUserCommand = f"gam update user \"{shp_email}\" phone type mobile value \"{phone_number}\" primary recoveryphone \"{recovery_phone_number}\" otheremail home \"{personal_email}\" recoveryemail \"{personal_email}\" organization description \"User\" costcenter \"{region}\" department \"{chapter}\" title \"\" primary"
@@ -88,18 +95,12 @@ def createGAMUser(user:dict, run=True):
         
     finalOutput(status=[createGAMUserCommand, updateGAMUserCommand])
     return None
-def showGAMUser(email):
-    return run_GAM_Commands([f"gam user {email} show gmailprofile"])
-def GAM_TEST():
-    return run_GAM_Commands(['hostname'])
-def run_GAM_Commands(commands):
-    output = []
-    for command in commands:
-        output.append(run_GAM_Command(command))
-    return output
 def run_GAM_Command(commandToRun):
-    user = gam_user
-    password = gam_user_pass
+    # the development server does not support GAM
+    if SERVER_ENVIRONMENT == "development":
+        return "This is development"
+    user = GAM_USER
+    password = GAM_PASSWORD
     command = f"su {user}"
     
     child = pexpect.spawn(command, timeout=30)
@@ -124,7 +125,6 @@ def main():
     user = getUserFromDatabase(args.user_id_arg)
     if user is None:
         finalOutput("Error", f"database does not have a user with that id")
-    output = ""
     createGAMUser(user=user, run=True)
     
 if __name__ == '__main__':

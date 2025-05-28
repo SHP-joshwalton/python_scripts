@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
+import SHP_config
 import os
-from dotenv import load_dotenv
 import re
 import requests
 import imaplib
@@ -16,16 +16,10 @@ email_pattern = re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,3}\
 # Regex pattern to match "StateAbbreviation-LocationName"
 chapter_pattern = re.compile(r'\b[A-Z]{2}-[A-Za-z\s]+\b')
 
-# Specify the path to the .env file
-dotenv_path = os.path.join('/var/www/scripts', '.env')
 
 wp_chapters_json = None
-# Load the .env file
-load_dotenv(dotenv_path)
-email_user = os.getenv('AUTOMATION_INBOX_EMAIL')
-email_password = os.getenv('AUTOMATION_INBOX_EMAIL_PASSWORD')
-
-wp_chapters_json = read_json_from_file("/var/www/html/chapters.json")#fetch_json_from_url("https://shpbeds2.wpengine.com/wp-json/shp/v1/chapters")
+INBOX_EMAIL = os.getenv('INBOX_EMAIL')
+INBOX_EMAIL_PASSWORD = os.getenv('INBOX_EMAIL_PASSWORD')
 
 def create_connection():
 
@@ -74,8 +68,8 @@ def fetch_json_from_url(url):
 
 def partOfTheEmailNeeded(text):
 	#the following Strings are for the start and end of the part of the email that we want 
-	startFrom = "Your form has a new entry. Here are all the answers."
-	finishHere = "*The fields below make it easy to copy and paste to Google Admin and Dashboard*"
+	startFrom = "Your form SHP Chapter Page Photo Submission has a new entry. Here are all the answers."
+	finishHere = "Name the photo this:"
 	return partOfTextNeeded(text, startFrom, finishHere)
 def partOfTextNeeded(text, start, end):
 	try:
@@ -86,26 +80,14 @@ def partOfTextNeeded(text, start, end):
 		return text[start_index:end_index]
 	except ValueError:
 		return ""
-def find_chapter_by_title(json_array, title):
-    for obj in json_array:
-        if obj.get('title') == title:
-            return obj
-    return {
-            "id" : 0,
-            "title" : title,
-            "region" : ""}
-
-def get_email_from_list(info_list, isSHP):
-    email_pattern = re.compile(r'[\w\.-]+@[\w\.-]+')
-    for item in info_list:
-        if isSHP and "shpbeds.org" in item:
-            match = email_pattern.search(item)
-            if match:
-                return match.group(0)
-        elif not isSHP and "shpbeds.org" not in item:
-            match = email_pattern.search(item)
-            if match:
-                return match.group(0)
+def get_email_from_list(line):
+	# Improved regex with word boundaries to avoid capturing unwanted text
+    email_pattern = re.compile(r'\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+\b')
+    match = email_pattern.search(line)
+    if match:
+        email = match.group(0)
+        # Strip out 'mailto' or any trailing parts, just in case
+        return email.replace('mailto', '').strip()
     return None
 # Function to format phone numbers to (123) 456-7890
 def format_phone_number(phone):
@@ -141,44 +123,25 @@ def processBody(bodyOfEmail, jiraTicket=""):
 	dictionary = get_dictionary_representation(cleanList, jiraTicket)
 	return save_to_database(dictionary)
 def get_dictionary_representation(info_list, jiraTicket):
-	requestor_first_name = search_and_get_string_after(info_list, "Requestor First Name|").strip()
-	requestor_last_name = search_and_get_string_after(info_list, "Requestor Last Name|").strip()
-	requestor_name = requestor_first_name + " " + requestor_last_name
-	requestor_email = get_email_from_list(info_list, isSHP=True).strip()
-	first_name = search_and_get_string_after(info_list, "Account First Name|").strip()
-	first_name = search_and_get_string_after(info_list, "Account First Name|").strip()
-	last_name = search_and_get_string_after(info_list, "Account Last Name|").strip()
-	shp_email = f"{first_name}.{last_name}@shpbeds.org"
-	chapter_name = search_and_get_string_after(info_list, "SHP Chapter|").strip()
-	chapter = find_chapter_by_title(wp_chapters_json, chapter_name)
-	chapter_id = chapter.get("id")
-	region = chapter.get("region")
+	first_name = search_and_get_string_after(info_list, "|First Name of person in photo|")
+	last_name = search_and_get_string_after(info_list, "Last Name of person in photo|")
+	shp_email = get_email_from_list(search_and_get_string_after(info_list, "||Email of Team Member Photo Submitted |"))
+	requester_shp_email = get_email_from_list(search_and_get_string_after(info_list, "||Email address|["))
+	chapter_name = search_and_get_string_after(info_list, "Chapter|")
+	phone = search_and_get_string_after(info_list, "|Phone|")
 	return {
 		"first_name": first_name,
 		"last_name": last_name,
-		"requestor_name": requestor_name,
-		"requestor_email": requestor_email,
-		"personal_email": get_email_from_list(info_list, isSHP=False).strip(),
-		"email": shp_email,
-		"phone": format_phone_number(search_and_get_string_after(info_list, "Account Cell Phone Number|")).strip(),
-		"chapter_role": "chapter_staff",
+		"email" : shp_email,
+		"requester_email": requester_shp_email,
+		"phone": phone,
 		"chapter": chapter_name,
-  		"chapter_id" : chapter_id,
-		"chapter_region" : region,
-		"chapter_title": search_and_get_string_after(info_list, "Chapter Core Team Role|").strip(),
-		"chapter_visibility": search_and_get_string_after(info_list, "Do you want this person's name on your chapter web page?").strip() == "Yes",
-		"chapter_portal_account": search_and_get_string_after(info_list, "Do you need a Chapter Portal account?").strip() == "Yes",
 		"jira_ticket": jiraTicket,
-		"state" : "JIRA"
+		"state" : "JIRA",
+  		"source" : "Google"
 	}
 def save_to_database(data):
 	try:
-		# Specify the path to the .env file
-		dotenv_path = os.path.join('/var/www/scripts', '.env')
-		# Load the .env file
-		load_dotenv(dotenv_path)
-		# Access the environment variables
-
 		conn = mysql.connector.connect(
 			host='localhost',
 			database=os.getenv('DATABASE_NAME'),
@@ -191,9 +154,9 @@ def save_to_database(data):
 
 			# Prepare the SQL INSERT statement
 			insert_query = """
-				INSERT INTO users 
-				(first_name, last_name, requestor_name, requestor_email, personal_email, email, phone, chapter_role, chapter, chapter_id, chapter_region, chapter_title, chapter_visibility, chapter_portal_account, jira_ticket, state)
-				VALUES (%(first_name)s, %(last_name)s, %(requestor_name)s, %(requestor_email)s, %(personal_email)s, %(email)s, %(phone)s, %(chapter_role)s, %(chapter)s, %(chapter_id)s, %(chapter_region)s, %(chapter_title)s, %(chapter_visibility)s, %(chapter_portal_account)s, %(jira_ticket)s, %(state)s)
+				INSERT INTO users_photos 
+				(first_name, last_name, email, requester_email, phone, chapter, jira_ticket, state)
+				VALUES (%(first_name)s, %(last_name)s, %(email)s, %(requester_email)s, %(phone)s, %(chapter)s, %(jira_ticket)s, %(state)s)
 			"""
 
 			# Execute the INSERT statement
@@ -209,16 +172,18 @@ def save_to_database(data):
 	except Error as e:
 		print(f"An error occurred: {e}")
 		return False
+
 def connectToMailbox():
 	# Connect to the server and log in
 	mail = imaplib.IMAP4_SSL('imap.gmail.com')
-	mail.login(email_user, email_password)
+	mail.login(INBOX_EMAIL, INBOX_EMAIL_PASSWORD)
 	
 	# Select the inbox
 	mail.select("inbox")
 	
-	# Search for all unread emails with subject containing "Create New Email"
-	status, messages = mail.search(None, '(UNSEEN SUBJECT "Create New SHP Email Address")')
+	# Search for all unread emails with subject containing "SHP Chapter Page Photo Submission"
+	status, messages = mail.search(None, '(UNSEEN SUBJECT "Chapter Page Photo Submission")')
+
 
 
 	
@@ -237,12 +202,14 @@ def connectToMailbox():
 			if isinstance(response_part, tuple):
 				msg = email.message_from_bytes(response_part[1])
 				email_subject = decode_header(msg["subject"])[0][0]
+				subjects.append(email_subject)
 				if isinstance(email_subject, bytes):
 					email_subject = email_subject.decode()
 				jiraTicket = partOfTextNeeded(email_subject, "[JIRA] (", ")")
-				subjects.append(email_subject)
+				if "SHP" not in email_subject:
+					pass
 				# Extract the plain text email body
-				if msg.is_multipart():
+				elif msg.is_multipart():
 					for part in msg.walk():
 						content_type = part.get_content_type()
 						if content_type == "text/plain":
@@ -269,5 +236,5 @@ def connectToMailbox():
 	}
 	print(json.dumps(stats), end="")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 	connectToMailbox()

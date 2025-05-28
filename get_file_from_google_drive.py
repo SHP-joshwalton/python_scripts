@@ -2,7 +2,7 @@
 import os
 import sys
 import pexpect
-from dotenv import load_dotenv
+import SHP_config
 import mysql.connector
 from mysql.connector import Error
 import argparse
@@ -14,11 +14,6 @@ parser.add_argument('file_name', type=str, help='A positional argument')
 
 # Parse the arguments
 args = parser.parse_args()
-# Specify the path to the .env file
-dotenv_path = os.path.join('/var/www/scripts', '.env')
-
-# Load the .env file
-load_dotenv(dotenv_path)
 # Configure logging
 # logging.basicConfig(
 #     filename='/var/www/scripts/create_user_results.log',
@@ -27,21 +22,19 @@ load_dotenv(dotenv_path)
 #     level=logging.DEBUG
 # )
 # Access the environment variables
-gam_user = os.getenv('GAM_USER')
-gam_user_pass = os.getenv('GAM_PASSWORD')
+GAM_USER = os.getenv('GAM_USER')
+GAM_PASSWORD = os.getenv('GAM_PASSWORD')
 import pexpect
 
 def copyFile(filename, dest):
-    user = gam_user
-    password = gam_user_pass
-    command = f"su {user}"
+    command = f"su {GAM_USER}"
     
     try:
         child = pexpect.spawn(command, timeout=30)
         
         # Handle initial password prompt for `su`
         child.expect("Password:")
-        child.sendline(password)
+        child.sendline(GAM_PASSWORD)
         child.expect(r"\$")  # Matches a typical bash prompt ($)
         
         # Change directory to `dest`
@@ -77,7 +70,6 @@ def finalOutput(status, errors = None):
     print(json.dumps(output), end="")
     exit()
 def main():
-    print(copyFile(args.file_name, dest="/var/www/user_photos"))
-    
+    copyFile(args.file_name, dest="/var/www/user_photos")
 if __name__ == '__main__':
     main()

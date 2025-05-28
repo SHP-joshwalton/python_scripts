@@ -8,17 +8,7 @@ from mysql.connector import Error
 import argparse
 import json
 import logging
-# Create the parser
-parser = argparse.ArgumentParser(description="An example script.")
-parser.add_argument('file_name', type=str, help='A positional argument')
-
-# Parse the arguments
-args = parser.parse_args()
-# Specify the path to the .env file
-dotenv_path = os.path.join('/var/www/scripts', '.env')
-
-# Load the .env file
-load_dotenv(dotenv_path)
+import SHP_config
 # Configure logging
 # logging.basicConfig(
 #     filename='/var/www/scripts/create_user_results.log',
@@ -27,51 +17,25 @@ load_dotenv(dotenv_path)
 #     level=logging.DEBUG
 # )
 # Access the environment variables
-gam_user = os.getenv('GAM_USER')
-gam_user_pass = os.getenv('GAM_PASSWORD')
+SERVER_ENVIRONMENT = os.getenv('SERVER_ENVIRONMENT')
 import pexpect
 
-def copyFile(filename, dest):
-    user = gam_user
-    password = gam_user_pass
-    command = f"su {user}"
+def deleteFile(filename, dest):
+    file_path = os.path.join(dest, filename)
+    # Check if the file exists
+    if os.path.exists(file_path):
+        # Check if you have permission to write (delete) the file
+        if os.access(file_path, os.W_OK):
+            try:
+                os.remove(file_path)
+                finalOutput("success")
+            except Exception as e:
+                finalOutput("error", str(e))
+        else:
+            finalOutput("error", "Permission denied: You do not have permission to delete this file.")
+    else:
+        finalOutput("error", "File not found: The specified file does not exist.")
     
-    try:
-        child = pexpect.spawn(command, timeout=30)
-        
-        # Handle initial password prompt for `su`
-        child.expect("Password:")
-        child.sendline(password)
-        child.expect(r"\$")  # Matches a typical bash prompt ($)
-        
-        # Change directory to `dest`
-        child.sendline(f"cd {dest}")
-        child.expect(r"\$")
-        child.sendline(f"rm -f {filename}")
-        child.expect(r"\$")
-        
-        # Run rclone command to copy the file
-        # since Drew said that we should not remove the photo from Google Drive,  the following lines are commented out 
-        # if you decide to remove the photo from Google Drive also along with removing it from automation
-        # child.sendline(f"rclone delete gamautomation:/User_Submit_Photos/{filename}")
-        # child.expect(r"\$")
-        # Exit the `su` session
-        child.sendline("exit")
-        child.expect(pexpect.EOF)
-        
-        # Capture output for logging
-        output = child.before.decode("utf-8")
-        # logging.debug(f"GAM Output Is: {output}")
-        return output
-    
-    except pexpect.TIMEOUT:
-        print("Timeout occurred during one of the steps.")
-        return None
-    except pexpect.EOF:
-        print("Process ended unexpectedly.")
-        return None
-    finally:
-        child.close()
 
 def finalOutput(status, errors = None):
     output = {
@@ -81,7 +45,12 @@ def finalOutput(status, errors = None):
     print(json.dumps(output), end="")
     exit()
 def main():
-    print(copyFile(args.file_name, dest="/var/www/user_photos"))
+    # Create the parser
+    parser = argparse.ArgumentParser(description="An example script.")
+    parser.add_argument('file_name', type=str, help='A positional argument')
+    # Parse the arguments
+    args = parser.parse_args()
+    deleteFile(args.file_name, dest="/var/www/user_photos")
     
 if __name__ == '__main__':
     main()
