@@ -1,45 +1,25 @@
-#!/usr/bin/env python3
-# This script shows how to use the client in anonymous mode
-# against jira.atlassian.com.
-from __future__ import annotations
-import os
-import SHP_config
-import re
-
 from jira import JIRA
-
-
-import mysql.connector
-from mysql.connector import Error
-import argparse
+import os
 import json
-import logging
+import SHP_config
+# Environment variables (or hardcode if you prefer for testing)
+JIRA_URL = os.getenv("JIRA_URL")
+JIRA_EMAIL = os.getenv("JIRA_EMAIL")
+JIRA_API_TOKEN = os.getenv("JIRA_API_TOKEN")
 
-# Create the parser
-parser = argparse.ArgumentParser(description="An example script.")
+def show_ticket(ticket_id: str):
+    jira = JIRA(server=JIRA_URL, basic_auth=(JIRA_EMAIL, JIRA_API_TOKEN))
+    issue = jira.issue(ticket_id)
 
-# Add arguments
-parser.add_argument('ticket_arg', type=str, help='The Jinra ticket number to search for')
-# Parse the arguments
-args = parser.parse_args()
-jira_email = os.getenv('JIRA_EMAIL')
-jira_api_token = os.getenv('JIRA_API_TOKEN')
+    # Convert to dict and pretty print
+    issue_dict = issue.raw  # raw JSON returned from Jira
+    print(json.dumps(issue_dict, indent=2))
 
-# Search returns first 50 results, `maxResults` must be set to exceed this
-#issues_in_proj = jira.search_issues('project=IT and summary ~ "Create New SHP Email Address for"')
-def main():
-    jira_ticket = args.ticket_arg
-    jira = JIRA(server='https://shpbeds.atlassian.net',basic_auth=(jira_email, jira_api_token))
-    issue1 = jira.issue(id=jira_ticket)
-    print("summary")
-    print(issue1.fields.summary)
-    print("description")
-    print(issue1.fields.description)
-    if len(issue1.fields.attachment) > 0:
-        for attachment in issue1.fields.attachment:
-            pass
-            #print("Name: '{filename}', size: {size}".format(filename=attachment.filename, size=attachment.size))
-            # to read content use `get` method:
-            #print("Content: '{}'".format(attachment.get()))
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Show all Jira ticket details")
+    parser.add_argument("ticket_id", type=str, help="The JIRA ticket ID, e.g., PROJ-123")
+    args = parser.parse_args()
+
+    show_ticket(args.ticket_id)

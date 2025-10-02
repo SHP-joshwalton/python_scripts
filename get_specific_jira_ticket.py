@@ -13,6 +13,8 @@ import send_email
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 # get all the jira information environment variables
+EMAIL_SUBJECT_NEW_ACCOUNT = os.getenv('EMAIL_SUBJECT_NEW_ACCOUNT')
+EMAIL_SUBJECT_PHOTO_SUBMISSION = os.getenv('EMAIL_SUBJECT_PHOTO_SUBMISSION')
 JIRA_URL = os.getenv('JIRA_URL')
 JIRA_EMAIL = os.getenv('JIRA_EMAIL')
 JIRA_API_TOKEN = os.getenv('JIRA_API_TOKEN')
@@ -236,15 +238,15 @@ def process_jira_ticket(ticket_id):
         jira = JIRA(server=JIRA_URL, basic_auth=(JIRA_EMAIL, JIRA_API_TOKEN))
         issue = jira.issue(ticket_id)
         
-        if "I need to request a new SHP email account" in issue.fields.summary:
+        if EMAIL_SUBJECT_NEW_ACCOUNT in issue.fields.summary:
             success = handle_email_request(issue)
             ticket_type = "email_request"
-        elif "Chapter Page Photo Submission" in issue.fields.summary:
+        elif EMAIL_SUBJECT_PHOTO_SUBMISSION in issue.fields.summary:
             success = handle_photo_request_jira(issue)
             ticket_type = "photo_request"
         else:
             status_code = 400
-            success, ticket_type = False, None
+            success, ticket_type = False, issue.fields.summary
     except Exception as e:
         print(f"Error processing ticket {ticket_id}: {e}", end="\n")
         status_code = e.status_code if hasattr(e, 'status_code') else 500
@@ -257,8 +259,9 @@ def main():
     parser = argparse.ArgumentParser(description="JIRA Ticket Processor")
     parser.add_argument('ticket_id', type=str, help='The JIRA ticket ID')
     args = parser.parse_args()
-    success, ticket_type, status = process_jira_ticket(args.ticket_id)
-    print(json.dumps({"added": success, "ticket_type": ticket_type, "status": status}), end="\n")
+    ticket = args.ticket_id
+    success, ticket_type, status = process_jira_ticket(ticket_id=ticket)
+    print(json.dumps({"added": success, "ticket": ticket, "ticket_type": ticket_type, "status": status}))
 
 #run the script main function if this is the main script
 if __name__ == '__main__':

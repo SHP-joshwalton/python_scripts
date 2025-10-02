@@ -119,10 +119,11 @@ def update_file_name(photo_id, file_name):
         if 'conn' in locals() and conn.is_connected():
             conn.close()
 
-def finalOutput(status, errors = None):
+def finalOutput(status, errors = None, code = 200):
     output = {
-        "results": status,
-        "errors": errors
+        "result": status,
+        "errors": errors,
+        "status_code": code
     }
     print(json.dumps(output))
     exit(0)
@@ -148,7 +149,7 @@ def main():
             except ValueError as err:
                 finalOutput("error", str(err))
     else:
-        finalOutput("error", [f"Photo '{photo_filename}' not found in Jira ticket '{jira_ticket}'."])
+        finalOutput("error", [f"No photo is attached to Jira ticket '{jira_ticket}'."], 404)
 
 if __name__ == "__main__":
     main()

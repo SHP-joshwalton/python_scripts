@@ -26,8 +26,8 @@ class EmailStatus(Enum):
 
 # Configurable constants
 IMAP_SERVER = "imap.gmail.com"
-EMAIL_SUBJECT_NEW_ACCOUNT = "I need to request a new SHP email account"
-EMAIL_SUBJECT_PHOTO_SUBMISSION = "Chapter Page Photo Submission"
+EMAIL_SUBJECT_NEW_ACCOUNT = os.getenv('EMAIL_SUBJECT_NEW_ACCOUNT')
+EMAIL_SUBJECT_PHOTO_SUBMISSION = os.getenv('EMAIL_SUBJECT_PHOTO_SUBMISSION')
 ALERT_RECEIVER = os.getenv('ALERT_RECEIVER_EMAIL')  # Where to send alerts
 SERVER_ENVIRONMENT = os.getenv('SERVER_ENVIRONMENT')
 

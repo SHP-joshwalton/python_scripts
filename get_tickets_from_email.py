@@ -15,7 +15,7 @@ import get_specific_jira_ticket
 # Configurable constants
 WP_JSON_URL = "https://shpbeds.org/wp-json/shp/v1/chapters"
 IMAP_SERVER = "imap.gmail.com"
-EMAIL_REQUEST_SUBJECT_FILTER = "I need to request a new SHP email account"
+EMAIL_REQUEST_SUBJECT_FILTER = "I need to request a new SHP account"
 PHOTO_REQUEST_SUBJECT_FILTER = "Chapter Page Photo Submission"
 
 # Regex patterns
